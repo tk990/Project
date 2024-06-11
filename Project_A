@@ -1,11 +1,19 @@
-	package ECTE331_Project_A_2;
+package ECTE331_Project_A_2;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.imageio.ImageIO;
+import javax.sql.rowset.JoinRowSet;
 import javax.swing.plaf.synth.SynthScrollPaneUI;
+
+import multi_threading.thread_1;
 
 public class Main_2 {
 	public static int [][] grayImage;
@@ -20,7 +28,7 @@ public class Main_2 {
 	private static BufferedImage image;
 
 
-	public static void main(String[] args) throws IOException 
+	public static void main(String[] args) throws Exception 
 	{
 		// path of the image
 		String sourceimage = "TenCardG.jpg";
@@ -34,89 +42,177 @@ public class Main_2 {
 		source_image_height = image_1.getHeight();
 		template_image_width = image_2.getWidth();
 		template_image_height = image_2.getHeight();
-		
+
 		int[][] source_pixel =  readColourImage(sourceimage);
 		int[][] template_pixel = readColourImage(templateimage);
+
 		int[][] slice_of_source_image = new int [template_pixel.length][template_pixel[0].length];
+		double[][] all_abs_diff = new double [source_pixel.length][source_pixel[0].length];
 
 		int temp_size = template_image_height * template_image_width;
 		double minimum = 10e5;
 		double absDiffMat = 0;
-		
+		double absDiff = 0; 
+
+		// Initializing a boolean array to keep track of visited regions
+		boolean[][] visited = new boolean[source_image_height][source_image_width];
+
 		//System.out.println(source_pixel[1][2]);
 		for(int i=0; i<(source_image_height-template_image_height);i++) // 926
+		{
 			for(int j=0;j<source_image_width-template_image_width;j++) // 649
 			{
 				for(int k=0; k<(template_image_height); k++)
+				{
 					for(int l=0; l<(template_image_width); l++)
 					{
 						slice_of_source_image[k][l] = source_pixel[i+k][j+l];	
 					}
-				 for (int i1 = 0; i1 < template_image_height; i1++) {
-			            for (int j1 = 0; j1 < template_image_width; j1++) {
-			                // Calculate the absolute difference for corresponding elements
-			                double absDiff = Math.abs(slice_of_source_image[i1][j1] - template_pixel[i1][j1]);
-			                // Assign absDiff to absDiffMat
-			                absDiffMat+= absDiff;
-			                
-			                
-			            }
-			        }
-				 
-				
+				}
+
+
+				for (int i1 = 0; i1 < template_image_height; i1++) 
+				{
+					for (int j1 = 0; j1 < template_image_width; j1++) 
+					{
+						absDiff = Math.abs(slice_of_source_image[i1][j1] - template_pixel[i1][j1]);
+						absDiffMat+= absDiff;						
+					}
+				}
+				absDiffMat = absDiffMat/temp_size;
+				all_abs_diff[i][j] = absDiffMat;
+
+				if (absDiffMat < minimum)
+				{
+					minimum=absDiffMat;
+				}
+				absDiffMat = 0;
 			}
-			
+		}
+		System.out.println(visited[319][219]);
+
+		double ratio = 10; 
+		double threshold = ratio * minimum;
+
+		ArrayList<Integer> rows= new ArrayList<>();
+		ArrayList<Integer> columns= new ArrayList<>();
+
+		int[][] array = null;
+		int k = 0;
+		for (int i = 0; i < source_image_height - template_image_height; i++) {
+			for (int j = 0; j < source_image_width - template_image_width; j++) {
+				if (!visited[i][j] && all_abs_diff[i][j] <= threshold) {
+					System.out.println("Match found at row: " + i + ", column: " + j);
+					markVisited(visited, i, j, template_image_width, template_image_height);
+					rows.add(i);
+					columns.add(j);
+				}
+			}
+		}
+
+		System.out.println("Rows: " + rows);
+		System.out.println("Columns: " + columns);
+
+		//writeColourImage(source_pixel, "NEW", array, template_image_width, template_image_height);
 	}
 
-
-	public static int[][] readColourImage(String fileName) throws IOException {
-
-		File inp=new File(fileName);
-        image = ImageIO.read(inp);
-        width = image.getWidth();
-        height = image.getHeight();   
-		// RGB pixel values
-		byte[] pixels;  
-		pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
-		System.out.println("Dimension of the image: WxH= " + width + " x "+height+" "+ "| num of pixels: "+ pixels.length);
-
-		//rgb2gray in a 2D array grayImage                 
-		int pr;// red
-		int pg;//  green
-		int pb;// blue     
-
-		grayImage = new int [height][width];
-		int coord;
-		for (int i=0; i<height;i++)
-			for(int j=0;j<width;j++)
-			{        		     
-				coord= 3*(i*width+j);
-				pr= ((short) pixels[coord] & 0xff); // red
-				pg= (((short) pixels[coord+1] & 0xff));//  green
-				pb= (((short) pixels[coord+2] & 0xff));// blue                
-
-				grayImage[i][j]=(short)Math.round(0.299 *pr + 0.587 * pg  + 0.114 * pb);         
-			} 
-		return grayImage;
-
+	// Method to mark the region around a match as visited
+	private static void markVisited(boolean[][] visited, int startX, int startY, int width, int height) {
+		for (int i = startX; i < startX + height; i++) {
+			for (int j = startY; j < startY + width; j++) {
+				visited[i][j] = true;
+			}
+		}
 	}
 
-}
+	// Method to draw rectangle
+	public static void writeColourImage(int source_pixel[][], String fileName,int array[][], int rectWidth, int rectHeight) throws Exception 
+	{   
+		Image scaledImage = image.getScaledInstance(-1,-1, 0);
+		// rectangle coordinates and dimension to superimpose on the image
 
 
+		for (int i = 0; i<array[1].length; i++)
+		{
+			// draw a box
+			int boxX = array[][]; // X coordinate of the top-left corner
+			int boxY = 98; // Y coordinate of the top-left corner
+			int boxWidth = template_image_width; // Width of the rectangle
+			int boxHeight = template_image_height; // Height of the rectangle
+			int boxColor = Color.black.getRGB(); // Color of the box
 
-/*
-for(int i=0; i<(source_image_height-template_image_height);i++)
-	for(int j=0;j<source_image_width-template_image_width;j++)
-		for(int k=i; k<(template_image_height+i); k++)
-			for(int l=j; l<(template_image_width+j); l++)
-			{
-				short[][] slice_of_sourceimage = null;
-				slice_of_sourceimage[k][l] = (short) source_pixel[k][l];
-				short absdiff
-				
-				
+			// Draw the top and bottom lines of the box
+			for (int x = boxX; x < boxX + boxWidth; x++) {
+				if (x < source_image_width) {
+					if (boxY < source_image_height) {
+						source_pixel[boxY][x] = boxColor; // Top line
+					}
+					if (boxY + boxHeight < source_image_height) {
+						source_pixel[boxY + boxHeight][x] = boxColor; // Bottom line
+					}
+				}
 			}
 
-*/
+			// Draw the left and right lines of the box
+			for (int y = boxY; y < boxY + boxHeight; y++) {
+				if (y < source_image_height) {
+					if (boxX < source_image_width) {
+						source_pixel[y][boxX] = boxColor; // Left line
+					}
+					if (boxX + boxWidth < source_image_width) {
+						source_pixel[y][boxX + boxWidth] = boxColor; // Right line
+					}
+				}
+			}
+
+			// Writing the modified pixel array back to the BufferedImage
+			for (int y = 0; y < source_image_height; y++) {
+				for (int x = 0; x < source_image_width; x++) {
+					image_1.setRGB(x, y, source_pixel[y][x]);
+				}
+			}
+
+			String outputPath = "TenCardG2new";
+			File outputFile = new File(outputPath);
+			ImageIO.write(image_1, "png", outputFile);
+
+			System.out.println("Box drawn and image saved to: " + outputPath);
+
+
+		}
+
+
+
+		// Method to read image
+		public static int[][] readColourImage(String fileName) throws IOException {
+
+			File inp=new File(fileName);
+			image = ImageIO.read(inp);
+			width = image.getWidth();
+			height = image.getHeight();   
+			// RGB pixel values
+			byte[] pixels;  
+			pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+			System.out.println("Dimension of the image: WxH= " + width + " x "+height+" "+ "| num of pixels: "+ pixels.length);
+
+			//rgb2gray in a 2D array grayImage                 
+			int pr;// red
+			int pg;//  green
+			int pb;// blue     
+
+			grayImage = new int [height][width];
+			int coord;
+			for (int i=0; i<height;i++)
+				for(int j=0;j<width;j++)
+				{        		     
+					coord= 3*(i*width+j);
+					pr= ((short) pixels[coord] & 0xff); // red
+					pg= (((short) pixels[coord+1] & 0xff));//  green
+					pb= (((short) pixels[coord+2] & 0xff));// blue                
+
+					grayImage[i][j]=(short)Math.round(0.299 *pr + 0.587 * pg  + 0.114 * pb);         
+				} 
+			return grayImage;
+		}
+	}
 
