@@ -1,0 +1,203 @@
+package ECTE3331_Project_B;
+// Comment the code, testing and results
+
+
+public class task {
+	public static void main(String[] args) throws InterruptedException { // MAIN
+		
+		Data my_sample = new Data();
+		int test_size = 100;
+		
+		for(int i=0; i<test_size; i++)
+		{
+			System.out.println("Try: "+i);
+			
+			my_sample.goB2 = false;
+			my_sample.goB3 = false;
+			my_sample.goA2 = false;
+			my_sample.goA3 = false;
+			
+			ThreadA t_a = new ThreadA(my_sample);
+			ThreadB t_b = new ThreadB(my_sample);
+			
+			t_a.start();
+			t_b.start();
+			t_a.join();
+			t_b.join();
+			
+			System.out.println(my_sample.A1);
+			System.out.println(my_sample.A2);
+			System.out.println(my_sample.A3);
+			System.out.println(my_sample.B1);
+			System.out.println(my_sample.B2);
+			System.out.println(my_sample.B3);
+			System.out.println("\n");
+		}
+	}
+
+}
+
+class Data //  class that stores all the variables and the boolean functions
+{
+	int A1, A2, A3, B1, B2, B3;
+	boolean goA1 = false;
+	boolean goA2 = false;
+	boolean goA3 = false;
+	boolean goB1 = false;
+	boolean goB2 = false;
+	boolean goB3 = false;
+}
+
+class ThreadA extends Thread // ThreadA
+{
+	private Data sample;
+
+	public ThreadA(Data sample) // Constructor 
+	{
+		this.sample = sample;
+	}
+
+	public void run()
+	{
+		synchronized (sample) // Function A1
+		{
+			int n = 500;
+			sample.A1 = n * (n+1) / 2; // mathematical operation
+			sample.goB2 = true;
+			sample.notify();
+		}
+
+		synchronized (sample) 
+		{
+			while (sample.goA2 == false)
+			{
+				try 
+				{
+					sample.wait(); // wait until Function B2 completes
+				} 
+				catch (InterruptedException e) 
+				{
+					e.printStackTrace();
+				}
+			}
+		}
+
+		synchronized (sample) 
+		{
+			while (sample.goA2 == true)
+			{
+				int n = 300;
+				sample.A2 = sample.B2 + n * (n+1) / 2; // mathematical operation
+				sample.goB3 = true;
+				sample.notify();
+				break;
+			}
+		}
+
+		synchronized (sample) 
+		{
+			while (sample.goA3 == false)
+			{
+				try 
+				{
+					sample.wait(); // wait until Function B2 completes
+				} 
+				catch (InterruptedException e) 
+				{
+					e.printStackTrace();
+				}
+			}
+		}
+
+		synchronized (sample) 
+		{
+			while (sample.goA3 == true)
+			{
+				int n = 400;
+				sample.A3 = sample.B3 + n * (n+1) / 2; // mathematical operation
+				break;
+			}
+		}
+
+
+	}
+
+
+}
+
+class ThreadB extends Thread // ThreadA
+{
+	private Data sample;
+
+	public ThreadB(Data sample) // Constructor 
+	{
+		this.sample = sample;
+	}
+
+	public void run()
+	{
+		synchronized (sample) // Function B1
+		{
+			int n = 250;
+			sample.B1 = n * (n+1) / 2; // mathematical operation
+		}
+
+		synchronized (sample) 
+		{
+			while (sample.goB2 == false)
+			{
+				try 
+				{
+					sample.wait(); // wait until Function A1 completes
+				} 
+				catch (InterruptedException e) 
+				{
+					e.printStackTrace();
+				}
+			}
+		}
+
+		synchronized (sample) // function B2
+		{
+			while (sample.goB2 == true)
+			{
+				int n = 200;
+				sample.B2 = sample.A1 + n * (n+1) / 2; // mathematical operation
+				sample.goA2 = true;
+				sample.notify();
+				break;
+			}
+		}
+
+		synchronized (sample) 
+		{
+			while (sample.goB3 == false)
+			{
+				try 
+				{
+					sample.wait(); // wait until Function A2 completes
+				} 
+				catch (InterruptedException e) 
+				{
+					e.printStackTrace();
+				}
+			}
+		}
+
+		synchronized (sample) // function B3
+		{
+			while (sample.goB3 == true)
+			{
+				int n = 400;
+				sample.B3 = sample.A2 + n * (n+1) / 2; // mathematical operation
+				sample.goA3 = true;
+				sample.notify();
+				break;
+			}
+		}
+
+
+
+
+	}
+}
