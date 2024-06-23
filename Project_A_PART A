@@ -31,6 +31,8 @@ public class Main_2 {
 	public static void main(String[] args) throws Exception 
 	{
 		// path of the image
+		// 
+		long t0 = System.nanoTime(); // get time
 		String sourceimage = "TenCardG.jpg";
 		String templateimage = "Template.jpg";
 
@@ -56,8 +58,8 @@ public class Main_2 {
 
 		// Initializing a boolean array to keep track of visited regions
 		boolean[][] visited = new boolean[source_image_height][source_image_width];
-
-		//System.out.println(source_pixel[1][2]);
+		
+		long t1 = System.nanoTime(); // get time
 		for(int i=0; i<(source_image_height-template_image_height);i++) // 926
 		{
 			for(int j=0;j<source_image_width-template_image_width;j++) // 649
@@ -89,7 +91,6 @@ public class Main_2 {
 				absDiffMat = 0;
 			}
 		}
-		System.out.println(visited[319][219]);
 
 		double ratio = 10; 
 		double threshold = ratio * minimum;
@@ -113,7 +114,12 @@ public class Main_2 {
 		System.out.println("Rows: " + rows);
 		System.out.println("Columns: " + columns);
 
-		//writeColourImage(source_pixel, "NEW", array, template_image_width, template_image_height);
+
+		writeColourImage(source_pixel, "Matched_Image", rows, columns, template_image_width, template_image_height);
+		long t2 = System.nanoTime(); // get end time
+		
+		System.out.println("Time to get to the loop: " + ((t1-t0)/(10e8)) + "s");
+		System.out.println("Time to match: " + ((t2-t1)/(10e8))+ "s");
 	}
 
 	// Method to mark the region around a match as visited
@@ -126,17 +132,17 @@ public class Main_2 {
 	}
 
 	// Method to draw rectangle
-	public static void writeColourImage(int source_pixel[][], String fileName,int array[][], int rectWidth, int rectHeight) throws Exception 
+	public static void writeColourImage(int source_pixel[][], String fileName, ArrayList<Integer> rows, ArrayList<Integer> columns, int rectWidth, int rectHeight) throws Exception 
 	{   
 		Image scaledImage = image.getScaledInstance(-1,-1, 0);
 		// rectangle coordinates and dimension to superimpose on the image
 
 
-		for (int i = 0; i<array[1].length; i++)
+		for (int i = 0; i<rows.size(); i++)
 		{
 			// draw a box
-			int boxX = array[][]; // X coordinate of the top-left corner
-			int boxY = 98; // Y coordinate of the top-left corner
+			int boxX = columns.get(i); // X coordinate of the top-left corner
+			int boxY = rows.get(i); // Y coordinate of the top-left corner
 			int boxWidth = template_image_width; // Width of the rectangle
 			int boxHeight = template_image_height; // Height of the rectangle
 			int boxColor = Color.black.getRGB(); // Color of the box
@@ -168,51 +174,49 @@ public class Main_2 {
 			// Writing the modified pixel array back to the BufferedImage
 			for (int y = 0; y < source_image_height; y++) {
 				for (int x = 0; x < source_image_width; x++) {
-					image_1.setRGB(x, y, source_pixel[y][x]);
+					int grayValue = source_pixel[y][x];
+					int rgb = grayValue << 16 | grayValue << 8 | grayValue;
+					image_1.setRGB(x, y, rgb);
 				}
 			}
-
-			String outputPath = "TenCardG2new";
-			File outputFile = new File(outputPath);
-			ImageIO.write(image_1, "png", outputFile);
-
-			System.out.println("Box drawn and image saved to: " + outputPath);
-
-
 		}
-
-
-
-		// Method to read image
-		public static int[][] readColourImage(String fileName) throws IOException {
-
-			File inp=new File(fileName);
-			image = ImageIO.read(inp);
-			width = image.getWidth();
-			height = image.getHeight();   
-			// RGB pixel values
-			byte[] pixels;  
-			pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
-			System.out.println("Dimension of the image: WxH= " + width + " x "+height+" "+ "| num of pixels: "+ pixels.length);
-
-			//rgb2gray in a 2D array grayImage                 
-			int pr;// red
-			int pg;//  green
-			int pb;// blue     
-
-			grayImage = new int [height][width];
-			int coord;
-			for (int i=0; i<height;i++)
-				for(int j=0;j<width;j++)
-				{        		     
-					coord= 3*(i*width+j);
-					pr= ((short) pixels[coord] & 0xff); // red
-					pg= (((short) pixels[coord+1] & 0xff));//  green
-					pb= (((short) pixels[coord+2] & 0xff));// blue                
-
-					grayImage[i][j]=(short)Math.round(0.299 *pr + 0.587 * pg  + 0.114 * pb);         
-				} 
-			return grayImage;
-		}
+		String outputPath = fileName;
+		File outputFile = new File(outputPath);
+		ImageIO.write(image_1, "png", outputFile);
 	}
 
+
+
+	// Method to read image
+	public static int[][] readColourImage(String fileName) throws IOException 
+	{
+
+		File inp=new File(fileName);
+		image = ImageIO.read(inp);
+		width = image.getWidth();
+		height = image.getHeight();   
+		// RGB pixel values
+		byte[] pixels;  
+		pixels = ((DataBufferByte) image.getRaster().getDataBuffer()).getData();
+		System.out.println("Dimension of the image: WxH= " + width + " x "+height+" "+ "| num of pixels: "+ pixels.length);
+
+		//rgb2gray in a 2D array grayImage                 
+		int pr;// red
+		int pg;//  green
+		int pb;// blue     
+
+		grayImage = new int [height][width];
+		int coord;
+		for (int i=0; i<height;i++)
+			for(int j=0;j<width;j++)
+			{        		     
+				coord= 3*(i*width+j);
+				pr= ((short) pixels[coord] & 0xff); // red
+				pg= (((short) pixels[coord+1] & 0xff));//  green
+				pb= (((short) pixels[coord+2] & 0xff));// blue                
+
+				grayImage[i][j]=(short)Math.round(0.299 *pr + 0.587 * pg  + 0.114 * pb);         
+			} 
+		return grayImage;
+	}
+}
